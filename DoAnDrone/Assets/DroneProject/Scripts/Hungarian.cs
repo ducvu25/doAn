@@ -7,18 +7,13 @@ public static class Hungarian
     static List<bool> indexColCheck;
     static List<bool> indexRowCheck;
     static List<Vector2> indexChoose = new List<Vector2>();
-    public static void SetUpHugrarian(TypeShape typeShape,ref List<Transform> drones)
+    public static void SetUpHungarian(List<Data> typeShape,ref List<Transform> drones)
     {
-        List<Transform> targets = new List<Transform>();
+        List<Vector3> targets = new List<Vector3>();
         List<Color> colors = new List<Color>();
-        for (int j = 0; j < typeShape.items.Count; j++)
+        for (int j = 0; j < typeShape.Count; j++)
         {
-            List<Transform> t = typeShape.items[j].transIndex;
-            for (int j2 = 0; j2 < t.Count; j2++)
-            {
-                targets.Add(t[j2]);
-                colors.Add(typeShape.items[j].color);
-            }
+            targets.Add(typeShape[j].data[0].position);
         }
         float[,] matrix = InitPrice(targets, drones);
         //{ {80, 120, 125, 140 },
@@ -40,19 +35,27 @@ public static class Hungarian
             indexChoose.Clear();
 
             SelectRowSolution(matrix, n, ref indexColCheck, ref indexChoose);
-
             SelectColSolution(matrix, n, ref indexColCheck, ref indexRowCheck, ref indexChoose);
+
             if (indexChoose.Count < n)
             {
                 isStop = false;
-                matrix = Adjust(matrix, n, ref indexColCheck, ref indexRowCheck, ref indexChoose);
+                matrix = Adjust(matrix, n, ref indexColCheck, ref indexRowCheck);
             }
         }
-
-        for (int i = 0; i < drones.Count; i++)
+        //indexChoose.Sort((a, b) => ((int)a.y).CompareTo((int)b.y));
+        //for (int i = 0; i < drones.Count; i++)
+        //{
+        //    drones[(int)indexChoose[i].x].GetComponent<Drone>().SetTask(targets[(int)indexChoose[i].y], colors[(int)indexChoose[i].y]);
+        //    drones[(int)indexChoose[i].x].GetComponent<Drone>().SetColor(Color.white);
+        //}
+        for (int k = 0; k < indexChoose.Count; k++)
         {
-            drones[(int)indexChoose[i].x].GetComponent<Drone>().SetTask(targets[(int)indexChoose[i].y], colors[(int)indexChoose[i].y]);
-            drones[(int)indexChoose[i].x].GetComponent<Drone>().SetColor(Color.white);
+            int targetIndex = (int)indexChoose[k].x;
+            int droneIndex = (int)indexChoose[k].y;
+            var drone = drones[droneIndex].GetComponent<Drone>();
+            drone.SetTask(typeShape[targetIndex]);
+            drone.SetColor(Color.white);
         }
     }
     static void ShowMatrix(float[,] matrix, int n)
@@ -69,7 +72,7 @@ public static class Hungarian
         }
         Debug.Log(sCheck);
     }
-    static float[,] InitPrice(List<Transform> listTarget, List<Transform> drones) // B1
+    static float[,] InitPrice(List<Vector3> listTarget, List<Transform> drones) // B1
     {
         int n = listTarget.Count;
         float[,] matrix = new float[n, n];
@@ -77,7 +80,7 @@ public static class Hungarian
         {
             for (int j = 0; j < n; j++)
             {
-                float d = Vector3.Distance(listTarget[i].position, drones[j].position);
+                float d = Vector3.Distance(listTarget[i], drones[j].position);
                 matrix[i, j] = d;
             }
         }
@@ -184,7 +187,7 @@ public static class Hungarian
             }
         }
     }
-    static float[,] Adjust(float[,] matrix, int n, ref List<bool> indexColCheck, ref List<bool> indexRowCheck, ref List<Vector2> indexChoose) // B5
+    static float[,] Adjust(float[,] matrix, int n, ref List<bool> indexColCheck, ref List<bool> indexRowCheck) // B5
     {
         // B1: Tìm giá trị min trong các số chưa gạch
         float minValue = -1;

@@ -30,7 +30,7 @@ public class InforDrone
 }
 public class Drone : MonoBehaviour
 {
-    public Transform transTarget;
+    public Data transTarget;
 
     public InforDrone inforDrone {get; private set;}
     
@@ -57,7 +57,7 @@ public class Drone : MonoBehaviour
         if(inforDrone.id == -1) return;
         if (inforDrone.state == STATE_DRONE.FOLLOW || inforDrone.state == STATE_DRONE.COMPLED)
         {
-            Vector3 dir = (transTarget.position - transform.position);
+            Vector3 dir = (transTarget.data[DroneManager.instance.indexFrame].position - transform.position);
             inforDrone.distance = dir.magnitude;
             float k = Mathf.Clamp(inforDrone.distance / DroneManager.instance.distanceMoveTarget, 0, 1); 
             Vector3 dirDroneCheck = DroneManager.instance.DirSupervisoryDrone(inforDrone.id);
@@ -78,13 +78,13 @@ public class Drone : MonoBehaviour
     {
         inforDrone = new InforDrone(id);
     }
-    public void SetTask(Transform target, Color color)
+    public void SetTask(Data data)
     {
-        transTarget = target;
+        transTarget = data;
         inforDrone.state = STATE_DRONE.FOLLOW;
-        inforDrone.target = target.position;
+        inforDrone.target = data.data[0].position;
         showLight = false;
-        colorShow = color;
+        colorShow = data.data[0].color;
         //Debug.Log(true);
     }
     void ShowLight()
@@ -100,11 +100,27 @@ public class Drone : MonoBehaviour
     {
         if (collision.transform.CompareTag("Drone") && inforDrone.state == STATE_DRONE.FOLLOW)
         {
-            if (Vector3.Angle(inforDrone.huong, collision.transform.position) >= 20)
+            Vector3 attractDir = inforDrone.huong.normalized;
+
+            // 2. Hướng đẩy khỏi drone vừa chạm
+            Vector3 repelDir = (transform.position - collision.transform.position).normalized;
+
+            // 3. Tính góc giữa hai vectơ
+            float angle = Vector3.Angle(attractDir, repelDir);
+
+            // 4. Ngưỡng dead‑zone (gần 180° mới coi là triệt tiêu)
+            const float deadZoneAngle = 160f;
+
+            if (angle >= deadZoneAngle)
             {
-                inforDrone.v = inforDrone.v + new Vector3(Random.Range(-1.0f, 1.0f), Random.Range(-1.0f, 1.0f), Random.Range(-1.0f, 1.0f));
+                // Dead‑zone: thêm kick pháp tuyến
+                Vector3 tangent = Vector3.Cross(repelDir, Vector3.up).normalized;
+                float tangentKick = 1.0f;
+                inforDrone.v += tangent * tangentKick;
+                // 5. Cập nhật rigidbody
                 rb.velocity = inforDrone.v;
             }
+
         }
     }
 }
