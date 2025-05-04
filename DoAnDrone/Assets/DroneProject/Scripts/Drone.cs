@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
+using System.Threading.Tasks;
 using UnityEngine;
 
 public enum STATE_DRONE
@@ -13,7 +14,7 @@ public enum STATE_DRONE
 }
 public class InforDrone
 {
-    public int id;
+    public int id = -1;
     public Vector3 v;
     public STATE_DRONE state;
     public Vector3 huong;
@@ -37,41 +38,56 @@ public class Drone : MonoBehaviour
     Rigidbody rb;
     Light light;
     bool showLight = false;
+    private const float deadZoneAngle = 150f;
+    private const float tangentKick = 100f;
+    private const float timeKickOff = 1f;
+    float _timeKickOff = 0;
     Color colorShow;
 
-    //List<Vector3> listPosition=new List<Vector3>();
     private void Awake()
     {
+        inforDrone = new InforDrone(-1);
         rb = GetComponent<Rigidbody>();
         light = GetComponentInChildren<Light>();
-    }
-    // Start is called before the first frame update
-    void Start()
-    {
-        //isFollow = false;
     }
 
     // Update is called once per frame
     void Update()
     {
         if(inforDrone.id == -1) return;
-        if (inforDrone.state == STATE_DRONE.FOLLOW || inforDrone.state == STATE_DRONE.COMPLED)
+        if (DroneManager.instance.indexFrame == 0)
         {
-            Vector3 dir = (transTarget.data[DroneManager.instance.indexFrame].position - transform.position);
+            Vector3 dir = transTarget.positions[DroneManager.instance.indexFrame] - transform.position;
             inforDrone.distance = dir.magnitude;
-            float k = Mathf.Clamp(inforDrone.distance / DroneManager.instance.distanceMoveTarget, 0, 1); 
+            float k = Mathf.Clamp(inforDrone.distance / DroneManager.instance.distanceMoveTarget, 0, 1);
+
             Vector3 dirDroneCheck = DroneManager.instance.DirSupervisoryDrone(inforDrone.id);
+            inforDrone.huong = dir.normalized * DroneManager.instance.moveTargetImportance + dirDroneCheck;
 
-            inforDrone.huong = (dir.normalized * DroneManager.instance.moveTargetImportance + dirDroneCheck).normalized;
-            inforDrone.v = inforDrone.huong * DroneManager.instance.speedDrone * k;
-            rb.velocity = inforDrone.v;
-
-            if (k < 0.1f && !showLight) {
+            if (_timeKickOff > 0)
+            {
+                inforDrone.huong += new Vector3(0, 0, tangentKick);
+                _timeKickOff -= Time.deltaTime;
+                if(_timeKickOff <= 0)
+                {
+                    inforDrone.state = STATE_DRONE.FOLLOW;
+                }
+            }
+            inforDrone.v = inforDrone.huong.normalized * DroneManager.instance.speedDrone * k;
+            if (k < 0.1f && !showLight)
+            {
                 inforDrone.state = STATE_DRONE.COMPLED;
                 ShowLight();
-                DroneManager.instance.ShowDrone();
+                DroneManager.instance.ShowDrone(inforDrone.id);
             }
-            //listPosition.Add(transform.position);
+            rb.velocity = inforDrone.v;
+        }
+        else
+        {
+            rb.velocity = Vector3.zero;
+            rb.useGravity = false;
+            transform.position += transTarget.positions[DroneManager.instance.indexFrame];
+            DroneManager.instance.ShowDrone(inforDrone.id);
         }
     }
     public void SetValue(int id)
@@ -80,12 +96,12 @@ public class Drone : MonoBehaviour
     }
     public void SetTask(Data data)
     {
+        rb.useGravity = true;
         transTarget = data;
         inforDrone.state = STATE_DRONE.FOLLOW;
-        inforDrone.target = data.data[0].position;
+        inforDrone.target = data.positions[0];
         showLight = false;
-        colorShow = data.data[0].color;
-        //Debug.Log(true);
+        colorShow = data.color;
     }
     void ShowLight()
     {
@@ -96,31 +112,24 @@ public class Drone : MonoBehaviour
     {
         light.color = x;
     }
-    private void OnCollisionEnter(Collision collision)
+    private void OnCollisionStay(Collision collision)
     {
-        if (collision.transform.CompareTag("Drone") && inforDrone.state == STATE_DRONE.FOLLOW)
+        if (collision.transform.CompareTag("Drone"))
         {
-            Vector3 attractDir = inforDrone.huong.normalized;
+            // only consider collisions with other drones when following
+            if (_timeKickOff > 0f || inforDrone.state != STATE_DRONE.FOLLOW || collision.transform.GetComponent<Drone>().inforDrone.state == STATE_DRONE.ERRO) return;
 
-            // 2. Hướng đẩy khỏi drone vừa chạm
-            Vector3 repelDir = (transform.position - collision.transform.position).normalized;
+            Vector3 attractDir = inforDrone.huong.normalized;                           // intended flight
+            Vector3 repelDir = (transform.position - collision.transform.position)
+                                 .normalized;                                         // away from the other drone
 
-            // 3. Tính góc giữa hai vectơ
             float angle = Vector3.Angle(attractDir, repelDir);
-
-            // 4. Ngưỡng dead‑zone (gần 180° mới coi là triệt tiêu)
-            const float deadZoneAngle = 160f;
-
             if (angle >= deadZoneAngle)
             {
-                // Dead‑zone: thêm kick pháp tuyến
-                Vector3 tangent = Vector3.Cross(repelDir, Vector3.up).normalized;
-                float tangentKick = 1.0f;
-                inforDrone.v += tangent * tangentKick;
-                // 5. Cập nhật rigidbody
-                rb.velocity = inforDrone.v;
+                _timeKickOff = timeKickOff;
+                inforDrone.state = STATE_DRONE.ERRO;
             }
-
         }
     }
+
 }

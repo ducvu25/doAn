@@ -8927,6 +8927,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _name: UET - CN9 - K66
+  _der: 
+  _sprite: {fileID: 0}
   items:
   - name: UET
     transIndex:

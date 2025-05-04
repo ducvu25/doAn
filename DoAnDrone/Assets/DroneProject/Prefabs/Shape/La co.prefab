@@ -6273,6 +6273,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _name: Start
+  _der: "C\u1EDD Vi\u1EC7t Nam"
+  _sprite: {fileID: 21300000, guid: 28189cc146bad7f47aacd763999d979c, type: 3}
   items:
   - name: Vien
     transIndex:
@@ -8080,7 +8082,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &1428784824350226743
 Transform:
   m_ObjectHideFlags: 0

@@ -1,0 +1,50 @@
+
+\subsection{Quy trình thực hiện trình diễn với ADI}
+\begin{enumerate}
+    \item \textbf{Thiết kế kịch bản}: Thiết kế kịch bản thông qua giao diện Unity rồi định nghĩa các frame.
+    \item \textbf{Lưu trữ kịch bản}: Mỗi hoạt cảnh sẽ được lưu dưới dạng một đối tượng \texttt{TypeShape} trong Unity, gồm danh sách các điểm hình dạng (transIndex), màu sắc và trạng thái ánh sáng.
+    \item \textbf{Tải và chọn kịch bản}: Giao diện menu trong Unity cho phép lựa chọn kịch bản cần mô phỏng từ danh sách có sẵn.
+    \item \textbf{Phân nhiệm}: Tại mỗi thời điểm chuyển đổi đội hình, hệ thống gọi thuật toán Hungarian để ánh xạ UAV đến vị trí mới tối ưu.
+    \item \textbf{Tránh va chạm}: Trong quá trình di chuyển, hệ thống kích hoạt thuật toán APF để giữ UAV ở khoảng cách an toàn.
+    \item \textbf{Hiển thị hoạt cảnh}: Kịch bản được chạy trong Unity với drone bay theo vector chuyển động và đổi màu theo dữ liệu kịch bản.
+\end{enumerate}
+
+\subsection{Hình minh họa ADI và menu kịch bản}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\linewidth]{Image/adi_ui_example.png}
+    \caption{Giao diện ADI: hiển thị các kịch bản trình diễn và cho phép lựa chọn trên Unity}
+    \label{fig:adi-ui}
+\end{figure}
+
+\textbf{Chú thích hình ảnh:}
+\begin{itemize}
+    \item Bên trái: menu danh sách kịch bản trình diễn.
+    \item Ở giữa: mô phỏng các UAV bay theo hoạt cảnh đã chọn.
+    \item Màu sắc thể hiện trạng thái ánh sáng của từng UAV theo thời gian.
+\end{itemize}
+
+\subsection{Tích hợp MEC vào hệ thống trình diễn UAV}
+Trong bài toán trình diễn UAV, việc chuyển đổi giữa các keyframe thường dẫn đến các thay đổi đội hình mới. MEC được áp dụng để tối ưu chuyển động liên tục:
+
+\begin{itemize}
+    \item \textbf{Input}: hai frame $F_t$ và $F_{t+1}$ (các vị trí UAV tại hai thời điểm).
+    \item \textbf{Tính vector chuyển động}: $\vec{v}_i = P_i^{t+1} - P_i^t$
+    \item \textbf{Nội suy chuyển động}: UAV sẽ di chuyển theo vector này theo tốc độ tuỳ chỉnh.
+    \item \textbf{Kiểm tra va chạm}: Kết hợp MEC với APF để duy trì khoảng cách an toàn.
+\end{itemize}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\linewidth]{Image/mec_uav_motion_vector.png}
+    \caption{Vector chuyển động trong MEC áp dụng cho UAV: từ hình dạng $F_t$ sang $F_{t+1}$}
+    \label{fig:mec_uav}
+\end{figure}
+
+\subsection{Lợi ích khi áp dụng MEC trong trình diễn drone}
+\begin{itemize}
+    \item Giảm số lần gọi lại thuật toán Hungarian trong hoạt động lâu dài.
+    \item Tăng độ mượt và thực tế trong hoạt động di chuyển.
+    \item Tối ưu hiệu suất khi triển khai kịch bản liên tục (liên khung).
+    \item Hỗ trợ trình diễn hình động liên tục, chữ chạy, đồ họa chuyển động.
+\end{itemize}

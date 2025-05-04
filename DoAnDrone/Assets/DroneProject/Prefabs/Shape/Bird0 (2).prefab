@@ -5136,6 +5136,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _name: bird_03
+  _der: "Ch\xFA chim dang r\u1ED9ng c\xE1nh"
+  _sprite: {fileID: 21300000, guid: 91e14e76f19ffe54cba542aadffadfe8, type: 3}
   items:
   - name: 
     transIndex:
@@ -5224,7 +5226,7 @@ MonoBehaviour:
     - {fileID: 1236945192264634419}
     - {fileID: 1453497642994375922}
     - {fileID: 3493030755904450601}
-    color: {r: 1, g: 0.7975486, b: 0, a: 0}
+    color: {r: 1, g: 0.7975486, b: 0, a: 1}
     isRandom: 1
 --- !u!1 &4194315531479230215
 GameObject:
@@ -9802,7 +9804,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &1290063413937851588
 Transform:
   m_ObjectHideFlags: 0

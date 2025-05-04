@@ -13,7 +13,7 @@ public static class Hungarian
         List<Color> colors = new List<Color>();
         for (int j = 0; j < typeShape.Count; j++)
         {
-            targets.Add(typeShape[j].data[0].position);
+            targets.Add(typeShape[j].positions[0]);
         }
         float[,] matrix = InitPrice(targets, drones);
         //{ {80, 120, 125, 140 },

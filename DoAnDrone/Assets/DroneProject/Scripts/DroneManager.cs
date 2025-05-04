@@ -1,5 +1,6 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Text;
 using Unity.VisualScripting.Antlr3.Runtime;
@@ -13,21 +14,24 @@ public class DroneManager : MonoBehaviour
     public float distanceCheckDrone;
     public float distanceMoveTarget;
 
+    [HideInInspector]
     public List<Transform> drones = new List<Transform>();
     public List<Drone> droneList = new List<Drone>();
 
     [SerializeField] List<GameObject> shapeList = new List<GameObject>();
-    List<TypeShape> typeShapes = new List<TypeShape>();
-    List<List<Data>> datas = new List<List<Data>>();
+    
     [SerializeField] int indexTask = 0;
     int nCheckShow = 0;
     public static DroneManager instance;
+    List<List<Data>> datas = new List<List<Data>>();
 
     public CameraController cameraController;
     public UI_Controller uiController;
-
+    List<int> checkState = new List<int>();
+    bool isEnd = false;
     private void Awake()
     {
+        indexTask = -1;
         instance = this;
         cameraController = GetComponent<CameraController>();
     }
@@ -37,10 +41,11 @@ public class DroneManager : MonoBehaviour
     {
         for (int i = 0; i < shapeList.Count; i++)
         {
-            //typeShapes.Add(shapeList[i].transform.GetComponent<TypeShape>());
-            //typeShapes[i].ExportFile();
-            datas.Add(ReadFile(shapeList[i].transform.GetComponent<TypeShape>()._name));
+            //shapeList[i].transform.GetComponent<TypeShape>().ExportFile();
+            datas.Add(DataGame.ReadFile(shapeList[i].transform.GetComponent<TypeShape>()._name));
         }
+        for(int i=0; i<DataGame.datas.Count; i++)
+            datas.Insert(datas.Count - 1, DataGame.datas[i]);
         //return;   
 
         int n = transform.childCount;
@@ -50,8 +55,8 @@ public class DroneManager : MonoBehaviour
             droneList[i].SetValue(i);
         }
         cameraController.SetUpCamera(TYPE_CAMERA.DEFAULT, null);
-        //PhanNhiem();
         StartCoroutine(SetUpHungarian(0));
+        StartCoroutine(CheckProfiler(0.5f));
     }
     public Vector3 DirSupervisoryDrone(int i)
     {
@@ -69,100 +74,111 @@ public class DroneManager : MonoBehaviour
         }
         return dir.normalized* conflictDistanceImportance;
     }
-
-    public void ShowDrone()
+    public Vector3 ComputeRepulsiveForce(int i)
     {
+        Vector3 force = Vector3.zero;
+        Vector3 pi = drones[i].position;
+
+        for (int j = 0; j < drones.Count; j++)
+        {
+            if (j == i) continue;
+
+            Vector3 pj = drones[j].position;
+            float d = Vector3.Distance(pi, pj);
+
+            if (d > 0f && d < distanceCheckDrone)
+            {
+                // công thức: k_rep * (1/d - 1/d0) * 1/d^2
+                float term = (1f / d - 1f / distanceCheckDrone);
+                float magnitude = term / (d * d);
+
+                Vector3 dir = (pi - pj).normalized;
+                force += dir * magnitude;
+            }
+        }
+
+        return force;
+    }
+    public void ShowDrone(int id)
+    {
+        if (checkState.Contains(id)) return;
+        checkState.Add(id);
         nCheckShow++;
         if(nCheckShow == drones.Count)
         {
+            checkState.Clear();
             nCheckShow = 0;
-            if(indexFrame == datas[indexTask][0].data.Count - 1)
+            if (indexFrame == datas[indexTask][0].positions.Count - 1)
             {
-                indexTask++;
-                if (indexTask < datas.Count)
+                if (indexTask < datas.Count - 1)
                 {
                     StartCoroutine(SetUpHungarian(5));
                 }
-            }else
+                else
+                {
+                    isEnd = true;
+                }
+            }
+            else
+            {
                 indexFrame++;
+            }
         }
     }
     IEnumerator SetUpHungarian(float delay)
     {
         yield return new WaitForSeconds(delay);
+        indexTask++;
         indexFrame = 0;
         Hungarian.SetUpHungarian(datas[indexTask], ref drones);
     }
-    public List<Data> ReadFile(string path)
+    public IEnumerator CheckProfiler(float timeDelay)
     {
-        var result = new List<Data>();
-        // đường dẫn tới Resources/yourfile.csv
-        string filePath = Application.dataPath + "/Resources/" + path + ".csv";
-        if (!File.Exists(filePath))
+        // Khoảng thời gian giữa 2 sample
+        WaitForSeconds wait = new WaitForSeconds(timeDelay);
+
+        // Mảng chứa danh sách vị trí của tất cả drone ở mỗi mẫu
+        List<List<Vector3>> samples = new List<List<Vector3>>();
+
+        // Lặp cho đến khi isEnd = true
+        while (!isEnd)
         {
-            Debug.LogError($"File not found: {filePath}");
-            return new List<Data>();
-        }
-        var lines = File.ReadAllLines(filePath, Encoding.UTF8);
-
-        // Bỏ qua dòng header, bắt đầu từ i=1
-        for (int i = 1; i < lines.Length; i++)
-        {
-            var line = lines[i].Trim();
-            if (string.IsNullOrEmpty(line)) continue;
-
-            // Split thành 4 phần: id, isRandom, numberFrame, Infor
-            var parts = line.Split(new[] { ',' }, 4);
-            // parts[0] = id (bỏ qua), parts[1] = isRandom, parts[2] = numberFrame, parts[3] = "(x;y;z); (r;g;b;a)"
-
-            // 1. Parse isRandom
-            bool isRandom = bool.Parse(parts[1].Trim());
-
-            // 2. Lấy phần Infor
-            string[] infos = parts[3].Split(',');
-            // 5. Đưa vào Data/DataFrame
-            var dataItem = new Data
+            List<Vector3> snapshot = new List<Vector3>(drones.Count);
+            for (int i = 0; i < drones.Count; i++)
             {
-                isRandom = isRandom,
-                data = new List<Data.DataFrame>()
-            };
-            foreach(string info in infos) {
-                // 3. Tách ra 2 nhóm trong ngoặc: vị trí và màu
-                int firstClose = info.IndexOf(')');
-                int secondOpen = info.IndexOf('(', firstClose);
-                int secondClose = info.LastIndexOf(')');
-
-                string posData = info.Substring(1, firstClose - 1);               // giữa "(" và ")"
-                string colData = info.Substring(secondOpen + 1, secondClose - secondOpen - 1);
-
-                // 4. Parse thành float[]
-                var posSplit = posData.Split(';');
-                var colSplit = colData.Split(';');
-
-                Vector3 position = new Vector3(
-                    float.Parse(posSplit[0]),
-                    float.Parse(posSplit[1]),
-                    float.Parse(posSplit[2])
-                );
-
-                Color color = new Color(
-                    float.Parse(colSplit[0]),
-                    float.Parse(colSplit[1]),
-                    float.Parse(colSplit[2]),
-                    float.Parse(colSplit[3])
-                );
-
-                Data.DataFrame frame = new Data.DataFrame
-                {
-                    position = position,
-                    color = color
-                };
-
-                dataItem.data.Add(frame);
+                snapshot.Add(drones[i].position);
             }
-            result.Add(dataItem);
+            samples.Add(snapshot);
+
+            yield return wait;
         }
 
-        return result;
+        // Build CSV
+        var sb = new StringBuilder();
+
+        // Header: Time, d0_x,d0_y,d0_z, d1_x,d1_y,d1_z, ...
+        sb.Append("time");
+        for (int i = 0; i < drones.Count; i++)
+            sb.AppendFormat(",d{0}_x,d{0}_y,d{0}_z", i);
+        sb.AppendLine();
+
+        // Rows
+        for (int s = 0; s < samples.Count; s++)
+        {
+            float t = s * timeDelay;
+            sb.Append(t.ToString("F3"));    // thời gian tính từ start
+            var snap = samples[s];
+            for (int i = 0; i < snap.Count; i++)
+            {
+                var v = snap[i];
+                sb.AppendFormat(",{0:F4},{1:F4},{2:F4}", v.x, v.y, v.z);
+            }
+            sb.AppendLine();
+        }
+
+        // Ghi file
+        string path = Path.Combine(Application.dataPath + "/Resources/", "drone_profiler.csv");
+        File.WriteAllText(path, sb.ToString(), Encoding.UTF8);
+        Debug.Log($"[Profiler] Exported {samples.Count} samples to: {path}");
     }
 }

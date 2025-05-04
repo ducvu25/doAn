@@ -7,6 +7,8 @@ using UnityEngine;
 public class TypeShape : MonoBehaviour
 {
     public string _name;
+    public string _der;
+    public Sprite _sprite;
     // 64
     [System.Serializable]
     public struct ShapeItem
@@ -30,7 +32,7 @@ public class TypeShape : MonoBehaviour
         var sb = new StringBuilder();
 
         // Header
-        sb.AppendLine("Name,IsRandom, NumberFrame, Infor");
+        sb.AppendLine("Name,Color, NumberFrame, Infor");
 
         int id = 0;
         int nFrame = 1;
@@ -41,12 +43,11 @@ public class TypeShape : MonoBehaviour
                 var c = item.color;
                 // Format: tên, r, g, b, a, isRandom, x, y, z
                 sb.AppendFormat(
-                    "{0},{1},{2},({3};{4};{5}); ({6};{7};{8};{9})\n",
+                    "{0},{1};{2};{3};{4},{5},{6};{7};{8}\n",
                     id++,
-                    item.isRandom,
+                    c.r, c.g, c.b, c.a,
                     nFrame,
-                    t.position.x, t.position.y, t.position.z,
-                    c.r, c.g, c.b, c.a
+                    t.position.x, t.position.y, t.position.z
                 );
             }
         }

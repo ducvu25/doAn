@@ -4,11 +4,6 @@ using UnityEngine;
 
 public class Data
 {
-    public bool isRandom;
-    public struct DataFrame
-    {
-        public Vector3 position;
-        public Color color;
-    }
-    public List<DataFrame> data;
+    public Color color;
+    public List<Vector3> positions;
 }
